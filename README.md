@@ -57,7 +57,7 @@ python3 s3finder.py -C amazon -w wordlist.txt -o found_buckets.txt --threads 20 
 ```
 ## 💡 Notes
 The tool generates combinations like:
-admin-company, company-admin, company
+keyword-company, company-keyword, company
 
 Use small wordlists for faster scanning; large wordlists may generate a huge number of requests!
 

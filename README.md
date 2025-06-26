@@ -85,7 +85,9 @@ Do not use against systems without explicit permission.
 
 ## 📌 Future Enhancements Ideas
 ✅ Silent mode
+
 ✅ JSON report option
+
 ✅ Auto-resume on interruption
 
 ## 👉 Feel free to fork, modify, and contribute!

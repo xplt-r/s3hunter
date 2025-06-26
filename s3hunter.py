@@ -2,16 +2,20 @@ import requests
 import argparse
 import threading
 import time
+from tqdm import tqdm
+from colorama import Fore, Style, init
+
+init(autoreset=True)  # Auto-reset colors after print
 
 def generate_bucket_names(company, wordlist):
     buckets = set()
     for word in wordlist:
         buckets.add(f"{word}-{company}")
         buckets.add(f"{company}-{word}")
-    buckets.add(company)  # Direct company name
+    buckets.add(company)
     return list(buckets)
 
-def check_bucket(bucket, results, lock, retries=2, timeout=5, proxy=None):
+def check_bucket(bucket, results, lock, progress, retries=2, timeout=5, proxy=None):
     urls = [
         f"http://{bucket}.s3.amazonaws.com",
         f"https://{bucket}.s3.amazonaws.com"
@@ -23,24 +27,33 @@ def check_bucket(bucket, results, lock, retries=2, timeout=5, proxy=None):
             try:
                 proxies = {"http": proxy, "https": proxy} if proxy else None
                 r = requests.head(url, timeout=timeout, proxies=proxies)
+                headers = r.headers
                 if r.status_code < 400:
+                    aws_signed = "x-amz-request-id" in headers
+                    msg = f"[✅ FOUND] {url} ({r.status_code}) {'[AWS SIGNED]' if aws_signed else ''}"
                     with lock:
-                        print(f"[✅ FOUND] {url} ({r.status_code})")
-                        results.append(f"{url} ({r.status_code})")
+                        print(Fore.GREEN + msg)
+                        results.append(msg)
                 else:
-                    print(f"[❌ NOT FOUND] {url} ({r.status_code})")
-                return  # Found a valid response; no more attempts
+                    with lock:
+                        print(Fore.YELLOW + f"[❌ NOT FOUND] {url} ({r.status_code})")
+                break
             except requests.RequestException as e:
-                print(f"[⚠️ ERROR] {url} | {type(e).__name__}: {e}")
+                with lock:
+                    print(Fore.RED + f"[⚠️ ERROR] {url} | {type(e).__name__}: {e}")
                 attempt += 1
                 if attempt <= retries:
                     time.sleep(1)
-                    print(f"🔁 Retrying {url} (Attempt {attempt}/{retries})...")
+                    with lock:
+                        print(Fore.CYAN + f"🔁 Retrying {url} (Attempt {attempt}/{retries})...")
                 else:
-                    print(f"⛔ Giving up on {url} after {retries} retries.")
+                    with lock:
+                        print(Fore.MAGENTA + f"⛔ Giving up on {url} after {retries} retries.")
+        with lock:
+            progress.update(1)
 
 def main():
-    parser = argparse.ArgumentParser(description="🔎 S3 Bucket Finder Tool (with proxy, HTTPS, retries)")
+    parser = argparse.ArgumentParser(description="🔎 Advanced S3 Bucket Finder Tool (Color, Progress, Signed detection)")
     parser.add_argument("-C", "--company", required=True, help="Company name (e.g. tomorrowland)")
     parser.add_argument("-w", "--wordlist", required=True, help="Path to wordlist file")
     parser.add_argument("-o", "--output", help="Save found buckets to file")
@@ -55,7 +68,7 @@ def main():
         with open(args.wordlist) as f:
             words = [line.strip() for line in f if line.strip()]
     except Exception as e:
-        print(f"[!] Error reading wordlist: {e}")
+        print(Fore.RED + f"[!] Error reading wordlist: {e}")
         return
 
     buckets = generate_bucket_names(args.company, words)
@@ -63,30 +76,34 @@ def main():
     lock = threading.Lock()
     threads = []
 
-    print(f"\n🚀 Starting S3 bucket scan for: {args.company}")
-    print(f"🔧 Threads: {args.threads} | Timeout: {args.timeout}s | Retries: {args.retries}")
+    print(Fore.CYAN + f"\n🚀 Starting S3 bucket scan for: {args.company}")
+    print(Fore.CYAN + f"🔧 Threads: {args.threads} | Timeout: {args.timeout}s | Retries: {args.retries}")
     if args.proxy:
-        print(f"🌐 Using proxy: {args.proxy}")
-    print(f"📦 Total buckets to check: {len(buckets)}\n")
+        print(Fore.CYAN + f"🌐 Using proxy: {args.proxy}")
+    print(Fore.CYAN + f"📦 Total buckets to check: {len(buckets)}\n")
+
+    progress = tqdm(total=len(buckets)*2, desc="Scanning", unit="req")
 
     for bucket in buckets:
         while threading.active_count() > args.threads:
             time.sleep(0.1)
         t = threading.Thread(target=check_bucket, args=(
-            bucket, results, lock, args.retries, args.timeout, args.proxy))
+            bucket, results, lock, progress, args.retries, args.timeout, args.proxy))
         t.start()
         threads.append(t)
 
     for t in threads:
         t.join()
 
+    progress.close()
+
     if args.output:
         with open(args.output, "w") as f:
             for line in results:
                 f.write(line + "\n")
-        print(f"\n💾 Results saved to {args.output}")
+        print(Fore.GREEN + f"\n💾 Results saved to {args.output}")
 
-    print(f"\n✅ Scan completed. {len(results)} accessible buckets found.")
+    print(Fore.GREEN + f"\n✅ Scan completed. {len(results)} accessible buckets found.")
 
 if __name__ == "__main__":
     main()

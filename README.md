@@ -30,7 +30,7 @@ pip3 install -r requirements.txt
 ```
 ## 📝 Usage Example
 ```
-python3 s3finder.py -C google -w wordlist.txt -o found_buckets.txt --threads 20 --retries 3 --timeout 7 --hide-status 403,404
+python3 s3finder.py -C amazon -w wordlist.txt -o found_buckets.txt --threads 20 --retries 3 --timeout 7 --hide-status 403,404
 ```
 ## 📌 Options
 ```-C, --company```Company name (required)
@@ -51,9 +51,9 @@ python3 s3finder.py -C google -w wordlist.txt -o found_buckets.txt --threads 20 
 
 ## 🌟 Example Output
 ```
-[✅ FOUND] https://admin-tomorrowland.s3.amazonaws.com (200) [AWS SIGNED]
-[❌ NOT FOUND] http://tomorrowland-admin.s3.amazonaws.com (404)
-[⚠️ ERROR] https://somebucket.s3.amazonaws.com | ConnectTimeout: HTTPSConnectionPool...
+[✅ FOUND] https://admin-amazon.s3.amazonaws.com (200) [AWS SIGNED]
+[❌ NOT FOUND] http://amazon-admin.s3.amazonaws.com (404)
+[⚠️ ERROR] https://some-bucket.s3.amazonaws.com | ConnectTimeout: HTTPSConnectionPool...
 ```
 ## 💡 Notes
 The tool generates combinations like:

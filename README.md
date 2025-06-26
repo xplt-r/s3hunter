@@ -33,15 +33,14 @@ pip3 install -r requirements.txt
 python3 s3finder.py -C google -w wordlist.txt -o found_buckets.txt --threads 20 --retries 3 --timeout 7 --hide-status 403,404
 ```
 ## 📌 Options
-Option	                                   Description
-```-C, --company```	                  Company name (required)
-```-w, --wordlist```	            Wordlist file path (required)
-```-o, --output	```                    Save results to file
-```-t, --threads```	               Number of threads (default: 10)
-```--timeout```	                Request timeout in seconds (default: 5)
-```--retries```	                 Number of retries per URL (default: 2)
-```--proxy```	                Use proxy (e.g. http://127.0.0.1:8080)
-```--hide-status```	        Comma-separated HTTP codes to hide (e.g. 403,404)
+```-C, --company```Company name (required)
+```-w, --wordlist```Wordlist file path (required)
+```-o, --output```Save results to file
+```-t, --threads```Number of threads (default: 10)
+```--timeout```Request timeout in seconds (default: 5)
+```--retries```Number of retries per URL (default: 2)
+```--proxy```Use proxy (e.g. http://127.0.0.1:8080)
+```--hide-status```Comma-separated HTTP codes to hide (e.g. 403,404)
 
 ## 🌟 Example Output
 ```

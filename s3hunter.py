@@ -5,7 +5,7 @@ import time
 from tqdm import tqdm
 from colorama import Fore, Style, init
 
-init(autoreset=True)  # Auto-reset colors after print
+init(autoreset=True)
 
 def generate_bucket_names(company, wordlist):
     buckets = set()
@@ -15,7 +15,7 @@ def generate_bucket_names(company, wordlist):
     buckets.add(company)
     return list(buckets)
 
-def check_bucket(bucket, results, lock, progress, retries=2, timeout=5, proxy=None):
+def check_bucket(bucket, results, lock, progress, retries=2, timeout=5, proxy=None, hide_status=None):
     urls = [
         f"http://{bucket}.s3.amazonaws.com",
         f"https://{bucket}.s3.amazonaws.com"
@@ -28,16 +28,22 @@ def check_bucket(bucket, results, lock, progress, retries=2, timeout=5, proxy=No
                 proxies = {"http": proxy, "https": proxy} if proxy else None
                 r = requests.head(url, timeout=timeout, proxies=proxies)
                 headers = r.headers
-                if r.status_code < 400:
+                code = r.status_code
+
+                if hide_status and code in hide_status:
+                    break  # silently skip printing this status
+
+                if code < 400:
                     aws_signed = "x-amz-request-id" in headers
-                    msg = f"[✅ FOUND] {url} ({r.status_code}) {'[AWS SIGNED]' if aws_signed else ''}"
+                    msg = f"[✅ FOUND] {url} ({code}) {'[AWS SIGNED]' if aws_signed else ''}"
                     with lock:
                         print(Fore.GREEN + msg)
                         results.append(msg)
                 else:
                     with lock:
-                        print(Fore.YELLOW + f"[❌ NOT FOUND] {url} ({r.status_code})")
+                        print(Fore.YELLOW + f"[❌ NOT FOUND] {url} ({code})")
                 break
+
             except requests.RequestException as e:
                 with lock:
                     print(Fore.RED + f"[⚠️ ERROR] {url} | {type(e).__name__}: {e}")
@@ -61,6 +67,7 @@ def main():
     parser.add_argument("--timeout", type=int, default=5, help="Timeout for each request (default: 5 sec)")
     parser.add_argument("--retries", type=int, default=2, help="Retries on failure (default: 2)")
     parser.add_argument("--proxy", help="Proxy (e.g. http://127.0.0.1:8080)")
+    parser.add_argument("--hide-status", help="Comma-separated status codes to hide (e.g. 403,404)")
 
     args = parser.parse_args()
 
@@ -71,6 +78,14 @@ def main():
         print(Fore.RED + f"[!] Error reading wordlist: {e}")
         return
 
+    hide_status = set()
+    if args.hide_status:
+        try:
+            hide_status = {int(x.strip()) for x in args.hide_status.split(",")}
+        except ValueError:
+            print(Fore.RED + "[!] Invalid --hide-status values. Use integers like 403,404")
+            return
+
     buckets = generate_bucket_names(args.company, words)
     results = []
     lock = threading.Lock()
@@ -80,6 +95,8 @@ def main():
     print(Fore.CYAN + f"🔧 Threads: {args.threads} | Timeout: {args.timeout}s | Retries: {args.retries}")
     if args.proxy:
         print(Fore.CYAN + f"🌐 Using proxy: {args.proxy}")
+    if hide_status:
+        print(Fore.CYAN + f"🙈 Hiding status codes: {', '.join(map(str, hide_status))}")
     print(Fore.CYAN + f"📦 Total buckets to check: {len(buckets)}\n")
 
     progress = tqdm(total=len(buckets)*2, desc="Scanning", unit="req")
@@ -88,7 +105,7 @@ def main():
         while threading.active_count() > args.threads:
             time.sleep(0.1)
         t = threading.Thread(target=check_bucket, args=(
-            bucket, results, lock, progress, args.retries, args.timeout, args.proxy))
+            bucket, results, lock, progress, args.retries, args.timeout, args.proxy, hide_status))
         t.start()
         threads.append(t)
 

@@ -59,7 +59,7 @@ def check_bucket(bucket, results, lock, progress, retries=2, timeout=5, proxy=No
             progress.update(1)
 
 def main():
-    parser = argparse.ArgumentParser(description="🔎 Advanced S3 Bucket Finder Tool (Color, Progress, Signed detection)")
+    parser = argparse.ArgumentParser(description="🔎 Advanced S3 Bucket Finder Tool")
     parser.add_argument("-C", "--company", required=True, help="Company name (e.g. amazon)")
     parser.add_argument("-w", "--wordlist", required=True, help="Path to wordlist file")
     parser.add_argument("-o", "--output", help="Save found buckets to file")
